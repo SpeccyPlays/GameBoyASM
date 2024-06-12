@@ -29,15 +29,27 @@ WaitVBlank:
 	ld bc, TilemapEnd - Tilemap
 	call Memcopy
 
+	;Copy the paddle data
+	ld de, Paddle
+	ld hl, $8000
+	ld bc, PaddleEnd - Paddle
+	call Memcopy
+
+	;copy the ball title
+	ld de, Ball
+	ld hl, $8010
+	ld bc, BallEnd - Ball
+	call Memcopy
+	
 	ld a, 0
 	ld b, 160
 	ld hl, _OAMRAM
-
 ClearOam:
 	ld [hli], a 
 	dec b 
 	jp nz, ClearOam
 
+	;Initialise paddle sprite in OAM
 	ld hl, _OAMRAM
 	ld a, 128 + 16
 	ld [hli], a 
@@ -45,13 +57,23 @@ ClearOam:
 	ld [hli], a 
 	ld a, 0
 	ld [hli], a 
-	ld [hl], a
+	ld [hli], a
 
-	;Copy the tile data
-	ld de, Paddle
-	ld hl, $8000
-	ld bc, PaddleEnd - Paddle
-	call Memcopy
+	;Initialise the ball sprite
+	ld a, 100 + 16
+	ld [hli], a 
+	ld a, 32 + 8
+	ld [hli], a 
+	ld a, 1
+	ld [hli], a 
+	ld a, 0
+	ld [hli], a
+
+	;Ball goes up and to the right to start
+	ld a, 1
+	ld [wBallMomentumX], a 
+	ld a, -1
+	ld [wBallMomentumY], a 
 
 	;turn the lcd on
 	ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON
@@ -78,6 +100,19 @@ WaitVBlank2:
 	ld a, [rLY]
 	cp 144
 	jp c, WaitVBlank2
+
+	;add momentum to it's position in OAM
+	ld a, [wBallMomentumX]
+	ld b, a 
+	ld a, [_OAMRAM + 5]
+	add a, b
+	ld [_OAMRAM + 5], a 
+
+	ld a, [wBallMomentumY]
+	ld b, a 
+	ld a, [_OAMRAM + 4]
+	add a, b 
+	ld [_OAMRAM + 4], a
 
 	;check the current keys every frame and move left or right.
 	call UpdateKeys
@@ -404,9 +439,24 @@ Paddle:
     dw `00000000
 PaddleEnd:
 
+Ball:
+	dw `00033000
+	dw `00322300
+	dw `03222230
+	dw `03222230
+	dw `00322300
+	dw `00033000
+	dw `00000000
+	dw `00000000
+BallEnd:
+
 SECTION "Counter", WRAM0
 wFrameCounter: db
 
 SECTION "Input Variables", WRAM0
 wCurKeys: db
 wNewKeys: db
+
+SECTION "Ball Data", WRAM0
+wBallMomentumX: db
+wBallMomentumY: db
